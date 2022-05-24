@@ -1,11 +1,9 @@
 import functools
-import operator
-from datetime import datetime
-from optparse import Values
+from datetime import date
 import sqlite3
 
 def conectar():
-    con = sqlite3.connect("mydatabase")
+    con = sqlite3.connect("mydatabase.db")
     cur = con.cursor()
     return con, cur    
 
@@ -24,6 +22,7 @@ except(sqlite3.OperationalError):
 con.close()
 
 #Declaración de funciones
+#Opcion 1
 def ingresar_datos():
     con, cur = conectar()
     codigo = int(input("Ingrese el codigo del evento: "))
@@ -38,20 +37,26 @@ def ingresar_datos():
 
 def imprimir_datos(datos):
     fila = datos.fetchone()
+    print("         INFORMACIÓN DEL EVENTO")
+    print("    (Código, Nombre, No Entradas, Fecha)")
     if fila != None:
         print(fila)
     else:
         print("No existe ningun evento asociado \n")
 
+#Opcion 3
 def imprimir_total_datos():
     con, cur = conectar()
     totalDatos = cur.execute('SELECT codigo, nombre, entrada_sell, fecha_evento FROM EVENTO')
+    print("         INFORMACIÓN DE LOS EVENTOS")
+    print("Código      Nombre      No. Entradas   Fecha")
     for fila in totalDatos:
         print(fila)
     print("")
     cur.close()
     con.close()
     
+ #Opcion 2   
 def buscar_evento(opcion):
     con, cur = conectar()
     if(opcion == 1):
@@ -66,28 +71,33 @@ def buscar_evento(opcion):
     cur.close()
     con.close()
 
+#Opcion 4
 def comprar_entradas(numEntradas, codigoEntrada):
     con, cur = conectar()
     fecha = cur.execute("SELECT fecha_evento FROM EVENTO WHERE codigo = ?", (codigoEntrada,))
     fila = fecha.fetchone()
     if fila != None:
         fechaEvent = '-'.join(fila)
-        fechaEvento = datetime.strptime(fechaEvent, "%d-%m-%Y")
-        fechaNow = datetime.now().strftime("%d-%m-%Y")
-        #res = fechaEvent - fechaNow
-        print("fecha actual: ", fechaNow)
-        print("fecha vieja: ", fechaEvento)
-        Entradas = cur.execute("SELECT entrada_sell FROM EVENTO WHERE codigo = ?", (codigoEntrada,))
-        numEntTotal = functools.reduce(lambda sub, ele:sub*10+ele, Entradas.fetchone())
-            
-        if numEntTotal == 0:
-            print("Las entradas para este evento estan agotadas \n")
-        elif numEntTotal - numEntradas < 0:
-            print(f"Excedió el numero de entradas disponible. La cantidad de entradas disponibles en el momento son: {numEntTotal} \n")
+        fechaEvento = date.fromisoformat(fechaEvent)
+        fechaNow = date.today()
+        restaFechas = fechaEvento - fechaNow
+        diasRestantes = int(restaFechas.days)
+        if diasRestantes >=1:
+            print("fecha actual: ", fechaNow)
+            print("fecha vieja: ", fechaEvento)
+            Entradas = cur.execute("SELECT entrada_sell FROM EVENTO WHERE codigo = ?", (codigoEntrada,))
+            numEntTotal = functools.reduce(lambda sub, ele:sub*10+ele, Entradas.fetchone())
+                
+            if numEntTotal == 0:
+                print("Las entradas para este evento estan agotadas \n")
+            elif numEntTotal - numEntradas < 0:
+                print(f"Excedió el numero de entradas disponible. La cantidad de entradas disponibles en el momento son: {numEntTotal} \n")
+            else:
+                numEntTotal = numEntTotal - numEntradas
+                cur.execute("UPDATE EVENTO SET entrada_sell = ? WHERE codigo = ?",(numEntTotal, codigoEntrada,))
+                print("Las entradas han sido compradas exitosamente \n")
         else:
-            numEntTotal = numEntTotal - numEntradas
-            cur.execute("UPDATE EVENTO SET entrada_sell = ? WHERE codigo = ?",(numEntTotal, codigoEntrada,))
-            print("Las entradas han sido compradas exitosamente \n")
+            print("No se pueden comprar entradas con menos de un día de anticipación")
     else:
         print("No existe ningun evento con dicho código \n") 
     cur.close()
@@ -121,9 +131,6 @@ while not(opcion == '5'):
     if (opcion =='4'):
         codigoEntrada = int(input("Ingrese el codigo del evento al cual quiere asistir: "))
         numEntradas = int(input("Ingrese el numero de entradas a comprar: "))        
-        #fechaEvent = '-'.join(fecha.fetchone())
-        #fechaNow = datetime.now().strftime("%d-%m-%Y")
-        #print(fechaEvent)
         comprar_entradas(numEntradas, codigoEntrada)
             
     if (opcion =='5'):
